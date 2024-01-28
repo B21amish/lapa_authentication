@@ -7,13 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from lapa_database_helper.main import LAPADatabaseHelper
 from lapa_database_structure.main import DatabasesEnum, SchemaEnum, TablesEnum
-from square_logger.main import SquareLogger
 from uvicorn import run
 
 from lapa_authentication.configuration import (
     config_int_host_port,
     config_str_host_ip,
-    config_str_log_file_name,
+    global_object_square_logger,
 )
 from lapa_authentication.entity.Models import RegisterUser
 from lapa_authentication.utils.CommonEnums import (
@@ -28,7 +27,6 @@ from lapa_authentication.utils.Helper import (
     get_user_validation_status_id,
 )
 
-local_object_square_logger = SquareLogger(config_str_log_file_name)
 local_object_lapa_database_helper = LAPADatabaseHelper()
 
 app = FastAPI()
@@ -42,7 +40,7 @@ app.add_middleware(
 
 
 @app.get("/")
-@local_object_square_logger.async_auto_logger
+@global_object_square_logger.async_auto_logger
 async def root():
     return JSONResponse(
         status_code=status.HTTP_200_OK, content={"text": "lapa_authentication"}
@@ -50,7 +48,7 @@ async def root():
 
 
 @app.post("/register")
-@local_object_square_logger.async_auto_logger
+@global_object_square_logger.async_auto_logger
 async def register(register_user: RegisterUser):
     """
     Description - This API endpoint is used to register user into the authentication database.
@@ -158,4 +156,4 @@ if __name__ == "__main__":
         run(app, host=config_str_host_ip, port=config_int_host_port)
 
     except Exception as exc:
-        local_object_square_logger.logger.critical(exc, exc_info=True)
+        global_object_square_logger.logger.critical(exc, exc_info=True)

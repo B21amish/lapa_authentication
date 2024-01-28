@@ -2,6 +2,8 @@ import configparser
 import os
 import sys
 
+from square_logger.main import SquareLogger
+
 try:
     config = configparser.ConfigParser()
     config_file_path = (
@@ -17,6 +19,9 @@ try:
     config_str_host_ip = config.get("ENVIRONMENT", "HOST_IP")
     config_int_host_port = int(config.get("ENVIRONMENT", "HOST_PORT"))
     config_str_log_file_name = config.get("ENVIRONMENT", "LOG_FILE_NAME")
+
+    # Initialize logger
+    global_object_square_logger = SquareLogger(config_str_log_file_name)
 except Exception as e:
     print(
         "\033[91mMissing or incorrect config.ini file.\n"

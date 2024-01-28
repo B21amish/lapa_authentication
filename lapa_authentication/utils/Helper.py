@@ -1,15 +1,12 @@
 from lapa_database_helper.main import LAPADatabaseHelper
 from lapa_database_structure.main import DatabasesEnum, SchemaEnum, TablesEnum
-from square_logger.main import SquareLogger
 
-from lapa_authentication.configuration import config_str_log_file_name
 from lapa_authentication.utils.CommonEnums import (
     HashingAlgorithm,
     UserRegistration,
     UserValidation,
 )
 
-local_object_square_logger = SquareLogger(config_str_log_file_name)
 local_object_lapa_database_helper = LAPADatabaseHelper()
 
 
