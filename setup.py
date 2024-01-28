@@ -1,10 +1,10 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 package_name = "lapa_authentication"
 
 setup(
     name=package_name,
-    version="0.0.1",
+    version="0.0.2",
     packages=find_packages(),
     package_data={
         package_name: ["data/*"],
@@ -14,16 +14,14 @@ setup(
         "fastapi>=0.104.1",
         "square_logger~=1.0",
         "bcrypt>=4.1.2",
-        "email_validator>=2.0.0",
-        "retrying>=1.3.4",
         "pydantic>=2.5.3",
-        "requests>=2.31.0",
-        "database_structure>=0.0.3"
+        "lapa_database_structure>=0.0.4",
+        "lapa_database_helper>=0.0.3",
     ],
     extras_require={},
-    author="Lav Sharma",
-    author_email="lavsharma2016@gmail.com",
-    description="lapa_authentication service.",
+    author="Lav Sharma, thePmSquare",
+    author_email="lavsharma2016@gmail.com, thepmsquare@gmail.com",
+    description="authentication service for my personal server.",
     long_description=open("README.md", "r").read(),
     long_description_content_type="text/markdown",
     url=f"https://github.com/lavvsharma/{package_name}",
