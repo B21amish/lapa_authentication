@@ -14,6 +14,12 @@ Authentication service
 
 ## Changelog
 
+### v0.0.2
+
+- move logger to configuration.py.
+- remove unused dependencies.
+- add lapa_database_helper.
+
 ### v0.0.1
 
 1. /register endpoint added.
