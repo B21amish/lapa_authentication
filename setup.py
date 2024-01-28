@@ -19,6 +19,7 @@ setup(
         "pydantic>=2.5.3",
         "requests>=2.31.0",
         "lapa_database_structure>=0.0.4",
+        "lapa_database_helper>=0.0.3",
     ],
     extras_require={},
     author="Lav Sharma, thePmSquare",

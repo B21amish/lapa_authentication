@@ -2,24 +2,34 @@ import base64
 from http import HTTPStatus
 
 import bcrypt
-from database_structure.main import DatabasesEnum, SchemaEnum, TablesEnum
 from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from lapa_database_helper.main import LAPADatabaseHelper
+from lapa_database_structure.main import DatabasesEnum, SchemaEnum, TablesEnum
 from square_logger.main import SquareLogger
 from uvicorn import run
 
 from lapa_authentication.configuration import (
     config_int_host_port,
     config_str_host_ip,
-    config_str_log_file_name
+    config_str_log_file_name,
 )
 from lapa_authentication.entity.Models import RegisterUser
-from lapa_authentication.utils.CommonEnums import User, UserValidation, UserRegistration, HashingAlgorithm
-from lapa_authentication.utils.Helper import get_rows_wrapper, insert_rows_wrapper, get_user_validation_status_id, \
-    get_user_registration_id, get_hash_algorithm_id
+from lapa_authentication.utils.CommonEnums import (
+    HashingAlgorithm,
+    User,
+    UserRegistration,
+    UserValidation,
+)
+from lapa_authentication.utils.Helper import (
+    get_hash_algorithm_id,
+    get_user_registration_id,
+    get_user_validation_status_id,
+)
 
 local_object_square_logger = SquareLogger(config_str_log_file_name)
+local_object_lapa_database_helper = LAPADatabaseHelper()
 
 app = FastAPI()
 
@@ -34,8 +44,9 @@ app.add_middleware(
 @app.get("/")
 @local_object_square_logger.async_auto_logger
 async def root():
-    return JSONResponse(status_code=status.HTTP_200_OK,
-                        content={"text": "lapa_authentication"})
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content={"text": "lapa_authentication"}
+    )
 
 
 @app.post("/register")
@@ -52,18 +63,25 @@ async def register(register_user: RegisterUser):
         # Check whether the user already exists in the user table
         # =========================================================
         _register_user = register_user.model_dump()
-        llst_user_found = get_rows_wrapper(pstr_database_name=DatabasesEnum.authentication.value,
-                                           pstr_table_name=TablesEnum.user.value,
-                                           pstr_schema_name=SchemaEnum.public.value,
-                                           pdict_filter_condition={User.user_email_id.value: _register_user['email']})
+        llst_user_found = local_object_lapa_database_helper.get_rows(
+            database_name=DatabasesEnum.authentication.value,
+            schema_name=SchemaEnum.public.value,
+            table_name=TablesEnum.user.value,
+            filters={User.user_email_id.value: _register_user["email"]},
+            ignore_filters_and_get_all=False,
+        )
 
         # =========================================================
         # If Yes --> Return msg saying user already exists with the same email id
         # =========================================================
         if len(llst_user_found) > 0:
-            return JSONResponse(status_code=HTTPStatus.CONFLICT,
-                                content={'user_created': lbool_user_created,
-                                         'message': 'User already exists with the same email id'})
+            return JSONResponse(
+                status_code=HTTPStatus.CONFLICT,
+                content={
+                    "user_created": lbool_user_created,
+                    "message": "User already exists with the same email id",
+                },
+            )
         else:
             # =========================================================
             # If No --> Create user in the user table
@@ -74,41 +92,61 @@ async def register(register_user: RegisterUser):
             # =========================================================
             # Hash the password with the salt
             # =========================================================
-            lbyte_hashed_password = bcrypt.hashpw(_register_user['password'].encode('utf-8'), lbyte_salt)
+            lbyte_hashed_password = bcrypt.hashpw(
+                _register_user["password"].encode("utf-8"), lbyte_salt
+            )
 
-            ldict_user_data[User.user_email_id.value] = _register_user['email']
-            ldict_user_data[User.user_password_salt.value] = base64.b64encode(lbyte_salt).decode('utf-8')
-            ldict_user_data[User.user_password_hash.value] = base64.b64encode(lbyte_hashed_password).decode('utf-8')
+            ldict_user_data[User.user_email_id.value] = _register_user["email"]
+            ldict_user_data[User.user_password_salt.value] = base64.b64encode(
+                lbyte_salt
+            ).decode("utf-8")
+            ldict_user_data[User.user_password_hash.value] = base64.b64encode(
+                lbyte_hashed_password
+            ).decode("utf-8")
 
             # =========================================================
             # Fetch user_validation_status_id where status_description = 'pending'
             # =========================================================
-            ldict_user_data[UserValidation.user_validation_status_id.value] = get_user_validation_status_id()
+            ldict_user_data[
+                UserValidation.user_validation_status_id.value
+            ] = get_user_validation_status_id()
 
             # =========================================================
             # Fetch user_registration_id where registration_description = _register_user['registration_type']
             # =========================================================
-            ldict_user_data[UserRegistration.user_registration_id.value] = get_user_registration_id(
-                _register_user['registration_type'])
-            ldict_user_data[HashingAlgorithm.hash_algorithm_id.value] = get_hash_algorithm_id()
-
-            insert_row_response = insert_rows_wrapper(pstr_database_name=DatabasesEnum.authentication.value,
-                                                      pstr_table_name=TablesEnum.user.value,
-                                                      pstr_schema_name=SchemaEnum.public.value,
-                                                      pdict_insert_data=ldict_user_data)
+            ldict_user_data[
+                UserRegistration.user_registration_id.value
+            ] = get_user_registration_id(_register_user["registration_type"])
+            ldict_user_data[
+                HashingAlgorithm.hash_algorithm_id.value
+            ] = get_hash_algorithm_id()
+            insert_row_response = local_object_lapa_database_helper.insert_rows(
+                database_name=DatabasesEnum.authentication.value,
+                schema_name=SchemaEnum.public.value,
+                table_name=TablesEnum.user.value,
+                data=[ldict_user_data],
+            )
             if len(insert_row_response) == 1:
                 # =========================================================
                 # Value inserted into database successful
                 # =========================================================
-                if 'user_id' in insert_row_response[0]:
+                if "user_id" in insert_row_response[0]:
                     lbool_user_created = True
-                    return JSONResponse(status_code=HTTPStatus.CREATED,
-                                        content={'user_created': lbool_user_created,
-                                                 'message': 'User created successfully'})
+                    return JSONResponse(
+                        status_code=HTTPStatus.CREATED,
+                        content={
+                            "user_created": lbool_user_created,
+                            "message": "User created successfully",
+                        },
+                    )
             else:
-                return JSONResponse(status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-                                    content={'user_created': lbool_user_created,
-                                             'message': 'User not created'})
+                return JSONResponse(
+                    status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
+                    content={
+                        "user_created": lbool_user_created,
+                        "message": "User not created",
+                    },
+                )
     except Exception:
         raise
     finally:
