@@ -4,7 +4,7 @@ package_name = "lapa_authentication"
 
 setup(
     name=package_name,
-    version="0.0.2",
+    version="0.0.3",
     packages=find_packages(),
     package_data={
         package_name: ["data/*"],
@@ -17,6 +17,7 @@ setup(
         "pydantic>=2.5.3",
         "lapa_database_structure>=0.0.4",
         "lapa_database_helper>=0.0.3",
+        "lapa_commons>=0.0.1",
     ],
     extras_require={},
     author="Lav Sharma, thePmSquare",
