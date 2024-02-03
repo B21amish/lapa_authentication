@@ -14,6 +14,10 @@ Authentication service
 
 ## Changelog
 
+### v0.0.4
+
+- bug fix - add "email_validator>=2.0.0" in dependencies.
+
 ### v0.0.3
 
 - use lapa_commons to read config.
