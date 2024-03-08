@@ -1,12 +1,19 @@
 from lapa_database_helper.main import LAPADatabaseHelper
-from lapa_database_structure.main import DatabasesEnum, SchemaEnum, TablesEnum
+
 
 from lapa_authentication.utils.CommonEnums import (
     HashingAlgorithm,
     UserRegistration,
     UserValidation,
 )
-
+from lapa_authentication.configuration import (
+    config_str_database_name,
+    config_str_schema_name,
+    config_str_user_table_name,
+    config_str_user_validation_status_table_name,
+    config_str_user_registration_table_name,
+    config_str_hashing_algorithm_table_name,
+)
 local_object_lapa_database_helper = LAPADatabaseHelper()
 
 
@@ -23,9 +30,9 @@ def get_user_validation_status_id(pstr_status_description: str = "pending") -> i
             UserValidation.status_description.value
         ] = pstr_status_description
         user_validation = local_object_lapa_database_helper.get_rows(
-            database_name=DatabasesEnum.authentication.value,
-            schema_name=SchemaEnum.public.value,
-            table_name=TablesEnum.user_validation_status.value,
+            database_name=config_str_database_name,
+            schema_name=config_str_schema_name,
+            table_name=config_str_user_validation_status_table_name,
             filters=ldict_filter_condition,
             ignore_filters_and_get_all=False,
         )
@@ -49,9 +56,9 @@ def get_user_registration_id(pstr_registration_description: str) -> int:
         ] = pstr_registration_description
 
         user_registration = local_object_lapa_database_helper.get_rows(
-            database_name=DatabasesEnum.authentication.value,
-            schema_name=SchemaEnum.public.value,
-            table_name=TablesEnum.user_registration.value,
+            database_name=config_str_database_name,
+            schema_name=config_str_schema_name,
+            table_name=config_str_user_registration_table_name,
             filters=ldict_filter_condition,
             ignore_filters_and_get_all=False,
         )
@@ -74,9 +81,9 @@ def get_hash_algorithm_id(pstr_algorithm_name: str = "bcrypt") -> int:
             HashingAlgorithm.algorithm_name.value
         ] = pstr_algorithm_name
         hashing_algorithm = local_object_lapa_database_helper.get_rows(
-            database_name=DatabasesEnum.authentication.value,
-            schema_name=SchemaEnum.public.value,
-            table_name=TablesEnum.hashing_algorithm.value,
+            database_name=config_str_database_name,
+            schema_name=config_str_schema_name,
+            table_name=config_str_hashing_algorithm_table_name,
             filters=ldict_filter_condition,
             ignore_filters_and_get_all=False,
         )

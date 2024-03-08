@@ -6,13 +6,18 @@ from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from lapa_database_helper.main import LAPADatabaseHelper
-from lapa_database_structure.main import DatabasesEnum, SchemaEnum, TablesEnum
 from uvicorn import run
 
 from lapa_authentication.configuration import (
     config_int_host_port,
     config_str_host_ip,
     global_object_square_logger,
+    config_str_database_name,
+    config_str_schema_name,
+    config_str_user_table_name,
+    config_str_user_validation_status_table_name,
+    config_str_user_registration_table_name,
+    config_str_hashing_algorithm_table_name,
 )
 from lapa_authentication.entity.Models import RegisterUser
 from lapa_authentication.utils.CommonEnums import (
@@ -62,9 +67,9 @@ async def register(register_user: RegisterUser):
         # =========================================================
         _register_user = register_user.model_dump()
         llst_user_found = local_object_lapa_database_helper.get_rows(
-            database_name=DatabasesEnum.authentication.value,
-            schema_name=SchemaEnum.public.value,
-            table_name=TablesEnum.user.value,
+            database_name=config_str_database_name
+            schema_name=config_str_schema_name,
+            table_name=config_str_user_table_name,
             filters={User.user_email_id.value: _register_user["email"]},
             ignore_filters_and_get_all=False,
         )
@@ -119,9 +124,9 @@ async def register(register_user: RegisterUser):
                 HashingAlgorithm.hash_algorithm_id.value
             ] = get_hash_algorithm_id()
             insert_row_response = local_object_lapa_database_helper.insert_rows(
-                database_name=DatabasesEnum.authentication.value,
-                schema_name=SchemaEnum.public.value,
-                table_name=TablesEnum.user.value,
+                database_name=config_str_database_name
+                schema_name=config_str_schema_name,
+                table_name=config_str_user_table_name,
                 data=[ldict_user_data],
             )
             if len(insert_row_response) == 1:

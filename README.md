@@ -14,6 +14,12 @@ Authentication service
 
 ## Changelog
 
+### v0.0.5
+
+- update database tables
+- move reading of database tables to configuration.py
+
+
 ### v0.0.4
 
 - bug fix - add "email_validator>=2.0.0" in dependencies.
