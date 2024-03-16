@@ -67,7 +67,7 @@ async def register(register_user: RegisterUser):
         # =========================================================
         _register_user = register_user.model_dump()
         llst_user_found = local_object_lapa_database_helper.get_rows(
-            database_name=config_str_database_name
+            database_name=config_str_database_name,
             schema_name=config_str_schema_name,
             table_name=config_str_user_table_name,
             filters={User.user_email_id.value: _register_user["email"]},
@@ -124,7 +124,7 @@ async def register(register_user: RegisterUser):
                 HashingAlgorithm.hash_algorithm_id.value
             ] = get_hash_algorithm_id()
             insert_row_response = local_object_lapa_database_helper.insert_rows(
-                database_name=config_str_database_name
+                database_name=config_str_database_name,
                 schema_name=config_str_schema_name,
                 table_name=config_str_user_table_name,
                 data=[ldict_user_data],

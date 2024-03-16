@@ -4,7 +4,7 @@ package_name = "lapa_authentication"
 
 setup(
     name=package_name,
-    version="0.0.5",
+    version="0.0.6",
     packages=find_packages(),
     package_data={
         package_name: ["data/*"],

@@ -14,11 +14,14 @@ Authentication service
 
 ## Changelog
 
+### v0.0.6
+
+- syntax error fix in main.py.
+
 ### v0.0.5
 
-- update database tables
-- move reading of database tables to configuration.py
-
+- update database tables.
+- move reading of database tables to configuration.py.
 
 ### v0.0.4
 

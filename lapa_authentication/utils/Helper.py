@@ -9,7 +9,6 @@ from lapa_authentication.utils.CommonEnums import (
 from lapa_authentication.configuration import (
     config_str_database_name,
     config_str_schema_name,
-    config_str_user_table_name,
     config_str_user_validation_status_table_name,
     config_str_user_registration_table_name,
     config_str_hashing_algorithm_table_name,
