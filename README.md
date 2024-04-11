@@ -14,6 +14,10 @@ Authentication service
 
 ## Changelog
 
+### v0.0.7
+
+- overhaul register logic.
+
 ### v0.0.6
 
 - syntax error fix in main.py.
