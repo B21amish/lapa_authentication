@@ -17,6 +17,7 @@ Authentication service
 ### v0.0.7
 
 - overhaul register logic.
+- overhaul tablename import logic.
 
 ### v0.0.6
 
