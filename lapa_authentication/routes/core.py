@@ -112,3 +112,81 @@ async def register_username(username: str, password: str):
                 table_name=User.__tablename__,
                 filters={User.user_id.name: local_str_user_id})
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
+
+
+@router.get("/login_username/")
+@global_object_square_logger.async_auto_logger
+async def register_username(username: str, password: str):
+    try:
+        # ======================================================================================
+        # get entry from authentication_username table
+        local_list_authentication_user_response = global_object_lapa_database_helper.get_rows(
+            database_name=local_string_database_name,
+            schema_name=local_string_schema_name,
+            table_name=AuthenticationUsername.__tablename__,
+            filters={AuthenticationUsername.authentication_username_username.name: username})
+        # ======================================================================================
+        # ======================================================================================
+        # validate username
+        # ======================================================================================
+        if len(local_list_authentication_user_response) != 1:
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="incorrect username.")
+        # ======================================================================================
+        # validate password
+        # ======================================================================================
+        else:
+            if not (bcrypt.checkpw(password.encode("utf-8"),
+                                   local_list_authentication_user_response[0][
+                                       AuthenticationUsername.authentication_username_hashed_password.name].encode(
+                                       "utf-8"))):
+                return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="incorrect password.")
+
+            # ======================================================================================
+            # return new access token and refresh token
+            # ======================================================================================
+            else:
+                local_str_salt = local_list_authentication_user_response[0][
+                    AuthenticationUsername.authentication_username_salt.name]
+                local_str_user_id = local_list_authentication_user_response[0][
+                    AuthenticationUsername.user_id.name]
+                # create access token
+                local_dict_access_token_payload = {
+                    'user_id': local_str_user_id,
+                    'exp': datetime.now() + timedelta(minutes=config_int_access_token_valid_minutes)
+                }
+                local_str_access_token = jwt.encode(local_dict_access_token_payload, config_str_secret_key)
+
+                # create refresh token
+                local_dict_refresh_token_payload = {
+                    'user_id': local_str_user_id,
+                    'exp': datetime.now() + timedelta(minutes=config_int_refresh_token_valid_minutes)
+                }
+                local_str_refresh_token = jwt.encode(local_dict_refresh_token_payload, config_str_secret_key)
+
+                # hash both
+                local_str_hashed_access_token = bcrypt.hashpw(local_str_access_token.encode("utf-8"),
+                                                              local_str_salt.encode("utf-8")).decode('utf-8')
+                local_str_hashed_refresh_token = bcrypt.hashpw(local_str_refresh_token.encode("utf-8"),
+                                                               local_str_salt.encode("utf-8")).decode('utf-8')
+                # entry in authentication username
+                local_list_response_authentication_username_edit = global_object_lapa_database_helper.edit_rows(
+                    data={
+                        AuthenticationUsername.authentication_username_hashed_access_token.name:
+                            local_str_hashed_access_token,
+                        AuthenticationUsername.authentication_username_hashed_refresh_token.name:
+                            local_str_hashed_refresh_token,
+                    },
+                    database_name=local_string_database_name, schema_name=local_string_schema_name,
+                    table_name=AuthenticationUsername.__tablename__,
+                    filters={AuthenticationUsername.user_id.name: local_str_user_id})
+                return JSONResponse(
+                    status_code=status.HTTP_200_OK,
+                    content={"user_id": local_str_user_id, "access_token": local_str_access_token,
+                             "refresh_token": local_str_refresh_token}
+                )
+
+        # ======================================================================================
+
+    except Exception as e:
+        global_object_square_logger.logger.error(e, exc_info=True)
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
