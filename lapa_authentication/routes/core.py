@@ -61,8 +61,7 @@ async def register_username(username: str, password: str):
         # entry in authentication username
 
         # hash password
-        local_str_salt = bcrypt.gensalt()
-        local_str_hashed_password = bcrypt.hashpw(password.encode("utf-8"), local_str_salt).decode('utf-8')
+        local_str_hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode('utf-8')
 
         # create access token
         local_dict_access_token_payload = {
@@ -80,15 +79,14 @@ async def register_username(username: str, password: str):
 
         # hash both
         local_str_hashed_access_token = bcrypt.hashpw(local_str_access_token.encode("utf-8"),
-                                                      local_str_salt).decode('utf-8')
+                                                      bcrypt.gensalt()).decode('utf-8')
         local_str_hashed_refresh_token = bcrypt.hashpw(local_str_refresh_token.encode("utf-8"),
-                                                       local_str_salt).decode('utf-8')
+                                                       bcrypt.gensalt()).decode('utf-8')
 
         local_list_response_authentication_username = global_object_lapa_database_helper.insert_rows(
             data=[{AuthenticationUsername.user_id.name: local_str_user_id,
                    AuthenticationUsername.authentication_username_username.name: username,
                    AuthenticationUsername.authentication_username_hashed_password.name: local_str_hashed_password,
-                   AuthenticationUsername.authentication_username_salt.name: local_str_salt.decode('utf-8'),
                    AuthenticationUsername.authentication_username_hashed_access_token.name:
                        local_str_hashed_access_token,
                    AuthenticationUsername.authentication_username_hashed_refresh_token.name:
@@ -145,8 +143,6 @@ async def register_username(username: str, password: str):
             # return new access token and refresh token
             # ======================================================================================
             else:
-                local_str_salt = local_list_authentication_user_response[0][
-                    AuthenticationUsername.authentication_username_salt.name]
                 local_str_user_id = local_list_authentication_user_response[0][
                     AuthenticationUsername.user_id.name]
                 # create access token
@@ -165,9 +161,10 @@ async def register_username(username: str, password: str):
 
                 # hash both
                 local_str_hashed_access_token = bcrypt.hashpw(local_str_access_token.encode("utf-8"),
-                                                              local_str_salt.encode("utf-8")).decode('utf-8')
+                                                              bcrypt.gensalt()).decode('utf-8')
                 local_str_hashed_refresh_token = bcrypt.hashpw(local_str_refresh_token.encode("utf-8"),
-                                                               local_str_salt.encode("utf-8")).decode('utf-8')
+                                                               bcrypt.gensalt()).decode('utf-8')
+
                 # entry in authentication username
                 local_list_response_authentication_username_edit = global_object_lapa_database_helper.edit_rows(
                     data={

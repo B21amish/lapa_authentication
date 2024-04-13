@@ -14,6 +14,11 @@ Authentication service
 
 ## Changelog
 
+### v0.0.8
+
+- remove salt storing from register.
+- implement login route.
+
 ### v0.0.7
 
 - overhaul register logic.
