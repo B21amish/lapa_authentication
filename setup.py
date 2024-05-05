@@ -4,7 +4,7 @@ package_name = "lapa_authentication"
 
 setup(
     name=package_name,
-    version="0.0.8",
+    version="0.0.9",
     packages=find_packages(),
     package_data={
         package_name: ["data/*"],
@@ -12,11 +12,14 @@ setup(
     install_requires=[
         "uvicorn>=0.24.0.post1",
         "fastapi>=0.104.1",
-        "square_logger~=1.0",
         "pydantic>=2.5.3",
-        "lapa_commons>=0.0.1",
         "bcrypt>=4.1.2",
-        "pyjwt>=2.8.0"
+        "pyjwt>=2.8.0",
+
+        "lapa_commons>=0.0.1",
+        "square_logger~=1.0",
+        "lapa_database_helper>=0.0.5",
+        "lapa_database_structure>=0.0.11"
     ],
     extras_require={},
     author="Lav Sharma, thePmSquare",

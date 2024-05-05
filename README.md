@@ -14,6 +14,10 @@ Authentication service
 
 ## Changelog
 
+### v0.0.9
+
+- fix missing dependencies in setup.py
+
 ### v0.0.8
 
 - remove salt storing from register.
