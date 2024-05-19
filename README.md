@@ -14,6 +14,10 @@ Authentication service
 
 ## Changelog
 
+### v0.0.10
+
+- changes in register calls w.r.t new table Credential 
+
 ### v0.0.9
 
 - fix missing dependencies in setup.py
