@@ -14,9 +14,13 @@ Authentication service
 
 ## Changelog
 
+### v0.0.11
+
+- changes in login and register calls as per database structure changes (naming convention)
+
 ### v0.0.10
 
-- changes in register calls w.r.t new table Credential 
+- changes in register calls w.r.t new table Credential
 
 ### v0.0.9
 

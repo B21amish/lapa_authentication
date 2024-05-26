@@ -7,8 +7,7 @@ from fastapi.responses import JSONResponse
 from lapa_database_helper.main import LAPADatabaseHelper
 from lapa_database_structure.lapa.authentication.enums import UserLogEventEnum
 from lapa_database_structure.lapa.authentication.tables import local_string_database_name, local_string_schema_name, \
-    User, UserLog, Credentials, UserProfile
-
+    User, UserLog, UserCredential, UserProfile
 
 from lapa_authentication.configuration import global_object_square_logger, config_str_secret_key, \
     config_int_access_token_valid_minutes, config_int_refresh_token_valid_minutes
@@ -70,12 +69,12 @@ async def register_username(username: str, password: str):
         local_str_refresh_token = jwt.encode(local_dict_refresh_token_payload, config_str_secret_key)
 
         local_list_response_authentication_username = global_object_lapa_database_helper.insert_rows(
-            data=[{Credentials.user_id.name: local_str_user_id,
-                   Credentials.username.name: username,
-                   Credentials.hashed_password.name: local_str_hashed_password,
+            data=[{UserCredential.user_id.name: local_str_user_id,
+                   UserCredential.user_credential_username.name: username,
+                   UserCredential.user_credential_hashed_password.name: local_str_hashed_password,
                    }],
             database_name=local_string_database_name, schema_name=local_string_schema_name,
-            table_name=Credentials.__tablename__)
+            table_name=UserCredential.__tablename__)
         # ======================================================================================
 
         return JSONResponse(
@@ -103,8 +102,8 @@ async def register_username(username: str, password: str):
         local_list_authentication_user_response = global_object_lapa_database_helper.get_rows(
             database_name=local_string_database_name,
             schema_name=local_string_schema_name,
-            table_name=Credentials.__tablename__,
-            filters={Credentials.username.name: username})
+            table_name=UserCredential.__tablename__,
+            filters={UserCredential.user_credential_username.name: username})
         # ======================================================================================
         # ======================================================================================
         # validate username
@@ -117,7 +116,7 @@ async def register_username(username: str, password: str):
         else:
             if not (bcrypt.checkpw(password.encode("utf-8"),
                                    local_list_authentication_user_response[0][
-                                       Credentials.hashed_password.name].encode(
+                                       UserCredential.user_credential_hashed_password.name].encode(
                                        "utf-8"))):
                 return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="incorrect password.")
 
@@ -126,7 +125,7 @@ async def register_username(username: str, password: str):
             # ======================================================================================
             else:
                 local_str_user_id = local_list_authentication_user_response[0][
-                    Credentials.user_id.name]
+                    UserCredential.user_id.name]
                 # create access token
                 local_dict_access_token_payload = {
                     'user_id': local_str_user_id,
