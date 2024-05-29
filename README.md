@@ -14,6 +14,10 @@ Authentication service
 
 ## Changelog
 
+### v0.0.12
+
+- create entry in device table and user_session_device table for login and register.
+
 ### v0.0.11
 
 - changes in login and register calls as per database structure changes (naming convention)
