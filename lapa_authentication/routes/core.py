@@ -23,7 +23,7 @@ global_object_lapa_database_helper = LAPADatabaseHelper()
 async def register_username(username: str, password: str, mac_address: Annotated[Union[str, None], Header()]):
     local_str_user_id = None
     try:
-        # todo: handle cases of duplicate username and duplicate mac address
+        # todo: handle case of duplicate username
         # ======================================================================================
         # entry in user table
         local_list_response_user = global_object_lapa_database_helper.insert_rows(
@@ -82,18 +82,32 @@ async def register_username(username: str, password: str, mac_address: Annotated
         # ======================================================================================
         # entry in device table
         # todo: encrypt mac address
-        local_list_response_device = global_object_lapa_database_helper.insert_rows(
-            data=[{Device.device_encrypted_mac_address.name: mac_address}],
-            database_name=local_string_database_name, schema_name=local_string_schema_name,
-            table_name=Device.__tablename__)
-
+        local_list_response_get_device = global_object_lapa_database_helper.get_rows(
+            filters={
+                Device.device_encrypted_mac_address.name: mac_address
+            },
+            database_name=local_string_database_name,
+            schema_name=local_string_schema_name,
+            table_name=Device.__tablename__
+        )
+        if len(local_list_response_get_device) == 1:
+            local_device_id = local_list_response_get_device[0][Device.device_id.name]
+        elif len(local_list_response_get_device) == 0:
+            local_list_response_device = global_object_lapa_database_helper.insert_rows(
+                data=[{Device.device_encrypted_mac_address.name: mac_address}],
+                database_name=local_string_database_name, schema_name=local_string_schema_name,
+                table_name=Device.__tablename__)
+            local_device_id = local_list_response_device[0][Device.device_id.name]
+        else:
+            global_object_square_logger.logger.error("multiple devices with same encrypted mac address.")
+            raise Exception("Unexpected error.")
         # ======================================================================================
         # ======================================================================================
         # entry in user device session table
         # todo: hash refresh token
         local_list_response_user_device_session = global_object_lapa_database_helper.insert_rows(
             data=[{UserDeviceSession.user_id.name: local_str_user_id,
-                   UserDeviceSession.device_id.name: local_list_response_device[0][Device.device_id.name],
+                   UserDeviceSession.device_id.name: local_device_id,
                    UserDeviceSession.user_device_session_hashed_refresh_token.name: local_str_refresh_token}],
             database_name=local_string_database_name, schema_name=local_string_schema_name,
             table_name=UserDeviceSession.__tablename__)
@@ -163,19 +177,33 @@ async def login_username(username: str, password: str, mac_address: Annotated[Un
                 local_str_refresh_token = jwt.encode(local_dict_refresh_token_payload, config_str_secret_key)
                 # ======================================================================================
                 # entry in device table
-                # todo: handle duplicate mac address
                 # todo: encrypt mac address
-                local_list_response_device = global_object_lapa_database_helper.insert_rows(
-                    data=[{Device.device_encrypted_mac_address.name: mac_address}],
-                    database_name=local_string_database_name, schema_name=local_string_schema_name,
-                    table_name=Device.__tablename__)
+                local_list_response_get_device = global_object_lapa_database_helper.get_rows(
+                    filters={
+                        Device.device_encrypted_mac_address.name: mac_address
+                    },
+                    database_name=local_string_database_name,
+                    schema_name=local_string_schema_name,
+                    table_name=Device.__tablename__
+                )
+                if len(local_list_response_get_device) == 1:
+                    local_device_id = local_list_response_get_device[0][Device.device_id.name]
+                elif len(local_list_response_get_device) == 0:
+                    local_list_response_device = global_object_lapa_database_helper.insert_rows(
+                        data=[{Device.device_encrypted_mac_address.name: mac_address}],
+                        database_name=local_string_database_name, schema_name=local_string_schema_name,
+                        table_name=Device.__tablename__)
+                    local_device_id = local_list_response_device[0][Device.device_id.name]
+                else:
+                    global_object_square_logger.logger.error("multiple devices with same encrypted mac address.")
+                    raise Exception("Unexpected error.")
                 # ======================================================================================
                 # ======================================================================================
                 # entry in user device session table
                 # todo: hash refresh token
                 local_list_response_user_device_session = global_object_lapa_database_helper.insert_rows(
                     data=[{UserDeviceSession.user_id.name: local_str_user_id,
-                           UserDeviceSession.device_id.name: local_list_response_device[0][Device.device_id.name],
+                           UserDeviceSession.device_id.name: local_device_id,
                            UserDeviceSession.user_device_session_hashed_refresh_token.name: local_str_refresh_token}],
                     database_name=local_string_database_name, schema_name=local_string_schema_name,
                     table_name=UserDeviceSession.__tablename__)
