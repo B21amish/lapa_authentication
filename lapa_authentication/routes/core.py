@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta
+from typing import Annotated, Union
 
 import bcrypt
 import jwt
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Header
 from fastapi.responses import JSONResponse
 from lapa_database_helper.main import LAPADatabaseHelper
 from lapa_database_structure.lapa.authentication.enums import UserLogEventEnum
 from lapa_database_structure.lapa.authentication.tables import local_string_database_name, local_string_schema_name, \
-    User, UserLog, UserCredential, UserProfile
+    User, UserLog, UserCredential, UserProfile, Device, UserDeviceSession
 
 from lapa_authentication.configuration import global_object_square_logger, config_str_secret_key, \
     config_int_access_token_valid_minutes, config_int_refresh_token_valid_minutes
@@ -19,9 +20,10 @@ global_object_lapa_database_helper = LAPADatabaseHelper()
 
 @router.get("/register_username/")
 @global_object_square_logger.async_auto_logger
-async def register_username(username: str, password: str):
+async def register_username(username: str, password: str, mac_address: Annotated[Union[str, None], Header()]):
     local_str_user_id = None
     try:
+        # todo: handle cases of duplicate username and duplicate mac address
         # ======================================================================================
         # entry in user table
         local_list_response_user = global_object_lapa_database_helper.insert_rows(
@@ -77,6 +79,26 @@ async def register_username(username: str, password: str):
             table_name=UserCredential.__tablename__)
         # ======================================================================================
 
+        # ======================================================================================
+        # entry in device table
+        # todo: encrypt mac address
+        local_list_response_device = global_object_lapa_database_helper.insert_rows(
+            data=[{Device.device_encrypted_mac_address.name: mac_address}],
+            database_name=local_string_database_name, schema_name=local_string_schema_name,
+            table_name=Device.__tablename__)
+
+        # ======================================================================================
+        # ======================================================================================
+        # entry in user device session table
+        # todo: hash refresh token
+        local_list_response_user_device_session = global_object_lapa_database_helper.insert_rows(
+            data=[{UserDeviceSession.user_id.name: local_str_user_id,
+                   UserDeviceSession.device_id.name: local_list_response_device[0][Device.device_id.name],
+                   UserDeviceSession.user_device_session_hashed_refresh_token.name: local_str_refresh_token}],
+            database_name=local_string_database_name, schema_name=local_string_schema_name,
+            table_name=UserDeviceSession.__tablename__)
+
+        # ======================================================================================
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={"user_id": local_str_user_id, "access_token": local_str_access_token,
@@ -95,7 +117,7 @@ async def register_username(username: str, password: str):
 
 @router.get("/login_username/")
 @global_object_square_logger.async_auto_logger
-async def register_username(username: str, password: str):
+async def login_username(username: str, password: str, mac_address: Annotated[Union[str, None], Header()]):
     try:
         # ======================================================================================
         # get entry from authentication_username table
@@ -139,7 +161,26 @@ async def register_username(username: str, password: str):
                     'exp': datetime.now() + timedelta(minutes=config_int_refresh_token_valid_minutes)
                 }
                 local_str_refresh_token = jwt.encode(local_dict_refresh_token_payload, config_str_secret_key)
+                # ======================================================================================
+                # entry in device table
+                # todo: handle duplicate mac address
+                # todo: encrypt mac address
+                local_list_response_device = global_object_lapa_database_helper.insert_rows(
+                    data=[{Device.device_encrypted_mac_address.name: mac_address}],
+                    database_name=local_string_database_name, schema_name=local_string_schema_name,
+                    table_name=Device.__tablename__)
+                # ======================================================================================
+                # ======================================================================================
+                # entry in user device session table
+                # todo: hash refresh token
+                local_list_response_user_device_session = global_object_lapa_database_helper.insert_rows(
+                    data=[{UserDeviceSession.user_id.name: local_str_user_id,
+                           UserDeviceSession.device_id.name: local_list_response_device[0][Device.device_id.name],
+                           UserDeviceSession.user_device_session_hashed_refresh_token.name: local_str_refresh_token}],
+                    database_name=local_string_database_name, schema_name=local_string_schema_name,
+                    table_name=UserDeviceSession.__tablename__)
 
+                # ======================================================================================
                 return JSONResponse(
                     status_code=status.HTTP_200_OK,
                     content={"user_id": local_str_user_id, "access_token": local_str_access_token,
