@@ -9,6 +9,7 @@ from lapa_database_helper.main import LAPADatabaseHelper
 from lapa_database_structure.lapa.authentication.enums import UserLogEventEnum
 from lapa_database_structure.lapa.authentication.tables import local_string_database_name, local_string_schema_name, \
     User, UserLog, UserCredential, UserProfile, Device, UserDeviceSession
+from requests.exceptions import HTTPError
 
 from lapa_authentication.configuration import global_object_square_logger, config_str_secret_key, \
     config_int_access_token_valid_minutes, config_int_refresh_token_valid_minutes
@@ -69,14 +70,22 @@ async def register_username(username: str, password: str, mac_address: Annotated
             'exp': datetime.now() + timedelta(minutes=config_int_refresh_token_valid_minutes)
         }
         local_str_refresh_token = jwt.encode(local_dict_refresh_token_payload, config_str_secret_key)
-
-        local_list_response_authentication_username = global_object_lapa_database_helper.insert_rows(
-            data=[{UserCredential.user_id.name: local_str_user_id,
-                   UserCredential.user_credential_username.name: username,
-                   UserCredential.user_credential_hashed_password.name: local_str_hashed_password,
-                   }],
-            database_name=local_string_database_name, schema_name=local_string_schema_name,
-            table_name=UserCredential.__tablename__)
+        try:
+            local_list_response_authentication_username = global_object_lapa_database_helper.insert_rows(
+                data=[{UserCredential.user_id.name: local_str_user_id,
+                       UserCredential.user_credential_username.name: username,
+                       UserCredential.user_credential_hashed_password.name: local_str_hashed_password,
+                       }],
+                database_name=local_string_database_name, schema_name=local_string_schema_name,
+                table_name=UserCredential.__tablename__)
+        except HTTPError as http_error:
+            if http_error.response.status_code == 400:
+                return JSONResponse(
+                    status_code=status.HTTP_409_CONFLICT,
+                    content=f"an account with the username {username} already exists."
+                )
+            else:
+                raise http_error
         # ======================================================================================
 
         # ======================================================================================
