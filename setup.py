@@ -15,6 +15,7 @@ setup(
         "pydantic>=2.5.3",
         "bcrypt>=4.1.2",
         "pyjwt>=2.8.0",
+        "requests>=2.32.3",
 
         "lapa_commons>=0.0.1",
         "square_logger~=1.0",
