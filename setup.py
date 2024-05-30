@@ -16,6 +16,7 @@ setup(
         "bcrypt>=4.1.2",
         "pyjwt>=2.8.0",
         "requests>=2.32.3",
+        "cryptography>=42.0.7",
 
         "lapa_commons>=0.0.1",
         "square_logger~=1.0",
