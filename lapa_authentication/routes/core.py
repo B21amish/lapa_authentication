@@ -11,8 +11,10 @@ from lapa_database_structure.lapa.authentication.tables import local_string_data
     User, UserLog, UserCredential, UserProfile, Device, UserDeviceSession
 from requests.exceptions import HTTPError
 
-from lapa_authentication.configuration import global_object_square_logger, config_str_secret_key, \
-    config_int_access_token_valid_minutes, config_int_refresh_token_valid_minutes
+from lapa_authentication.configuration import global_object_square_logger, config_str_secret_key_for_access_token, \
+    config_int_access_token_valid_minutes, config_int_refresh_token_valid_minutes, \
+    config_str_secret_key_for_refresh_token, config_str_secret_key_for_mac_address_encryption
+from lapa_authentication.utils.encryption import encrypt
 
 router = APIRouter(tags=["core"], )
 
@@ -24,7 +26,6 @@ global_object_lapa_database_helper = LAPADatabaseHelper()
 async def register_username(username: str, password: str, mac_address: Annotated[Union[str, None], Header()]):
     local_str_user_id = None
     try:
-        # todo: handle case of duplicate username
         # ======================================================================================
         # entry in user table
         local_list_response_user = global_object_lapa_database_helper.insert_rows(
@@ -62,14 +63,14 @@ async def register_username(username: str, password: str, mac_address: Annotated
             'user_id': local_str_user_id,
             'exp': datetime.now() + timedelta(minutes=config_int_access_token_valid_minutes)
         }
-        local_str_access_token = jwt.encode(local_dict_access_token_payload, config_str_secret_key)
+        local_str_access_token = jwt.encode(local_dict_access_token_payload, config_str_secret_key_for_access_token)
 
         # create refresh token
         local_dict_refresh_token_payload = {
             'user_id': local_str_user_id,
             'exp': datetime.now() + timedelta(minutes=config_int_refresh_token_valid_minutes)
         }
-        local_str_refresh_token = jwt.encode(local_dict_refresh_token_payload, config_str_secret_key)
+        local_str_refresh_token = jwt.encode(local_dict_refresh_token_payload, config_str_secret_key_for_refresh_token)
         try:
             local_list_response_authentication_username = global_object_lapa_database_helper.insert_rows(
                 data=[{UserCredential.user_id.name: local_str_user_id,
@@ -90,10 +91,11 @@ async def register_username(username: str, password: str, mac_address: Annotated
 
         # ======================================================================================
         # entry in device table
-        # todo: encrypt mac address
+        local_str_encrypted_mac_address = encrypt(plaintext=mac_address,
+                                                  key=config_str_secret_key_for_mac_address_encryption)
         local_list_response_get_device = global_object_lapa_database_helper.get_rows(
             filters={
-                Device.device_encrypted_mac_address.name: mac_address
+                Device.device_encrypted_mac_address.name: local_str_encrypted_mac_address
             },
             database_name=local_string_database_name,
             schema_name=local_string_schema_name,
@@ -103,12 +105,13 @@ async def register_username(username: str, password: str, mac_address: Annotated
             local_device_id = local_list_response_get_device[0][Device.device_id.name]
         elif len(local_list_response_get_device) == 0:
             local_list_response_device = global_object_lapa_database_helper.insert_rows(
-                data=[{Device.device_encrypted_mac_address.name: mac_address}],
+                data=[{Device.device_encrypted_mac_address.name: local_str_encrypted_mac_address}],
                 database_name=local_string_database_name, schema_name=local_string_schema_name,
                 table_name=Device.__tablename__)
             local_device_id = local_list_response_device[0][Device.device_id.name]
         else:
-            global_object_square_logger.logger.error("multiple devices with same encrypted mac address.")
+            global_object_square_logger.logger.error(
+                f"multiple devices with same encrypted mac address: {local_str_encrypted_mac_address}.")
             raise Exception("Unexpected error.")
         # ======================================================================================
         # ======================================================================================
@@ -177,20 +180,23 @@ async def login_username(username: str, password: str, mac_address: Annotated[Un
                     'user_id': local_str_user_id,
                     'exp': datetime.now() + timedelta(minutes=config_int_access_token_valid_minutes)
                 }
-                local_str_access_token = jwt.encode(local_dict_access_token_payload, config_str_secret_key)
+                local_str_access_token = jwt.encode(local_dict_access_token_payload,
+                                                    config_str_secret_key_for_access_token)
 
                 # create refresh token
                 local_dict_refresh_token_payload = {
                     'user_id': local_str_user_id,
                     'exp': datetime.now() + timedelta(minutes=config_int_refresh_token_valid_minutes)
                 }
-                local_str_refresh_token = jwt.encode(local_dict_refresh_token_payload, config_str_secret_key)
+                local_str_refresh_token = jwt.encode(local_dict_refresh_token_payload,
+                                                     config_str_secret_key_for_refresh_token)
                 # ======================================================================================
                 # entry in device table
-                # todo: encrypt mac address
+                local_str_encrypted_mac_address = encrypt(plaintext=mac_address,
+                                                          key=config_str_secret_key_for_mac_address_encryption)
                 local_list_response_get_device = global_object_lapa_database_helper.get_rows(
                     filters={
-                        Device.device_encrypted_mac_address.name: mac_address
+                        Device.device_encrypted_mac_address.name: local_str_encrypted_mac_address
                     },
                     database_name=local_string_database_name,
                     schema_name=local_string_schema_name,
@@ -200,7 +206,7 @@ async def login_username(username: str, password: str, mac_address: Annotated[Un
                     local_device_id = local_list_response_get_device[0][Device.device_id.name]
                 elif len(local_list_response_get_device) == 0:
                     local_list_response_device = global_object_lapa_database_helper.insert_rows(
-                        data=[{Device.device_encrypted_mac_address.name: mac_address}],
+                        data=[{Device.device_encrypted_mac_address.name: local_str_encrypted_mac_address}],
                         database_name=local_string_database_name, schema_name=local_string_schema_name,
                         table_name=Device.__tablename__)
                     local_device_id = local_list_response_device[0][Device.device_id.name]
