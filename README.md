@@ -14,6 +14,13 @@ Authentication service
 
 ## Changelog
 
+### v0.0.13
+
+- add custom message and status code for duplicate username.
+- delete session if already present on same device for same user.
+- encrypt mac_address in login and register.
+- keep seperate secret keys for access token refresh token and mac address encrpytion.
+
 ### v0.0.12
 
 - create entry in device table and user_session_device table for login and register.
