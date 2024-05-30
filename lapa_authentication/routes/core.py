@@ -212,6 +212,11 @@ async def login_username(username: str, password: str, mac_address: Annotated[Un
                 # entry in user device session table
                 local_str_hashed_refresh_token = bcrypt.hashpw(local_str_refresh_token.encode("utf-8"),
                                                                bcrypt.gensalt()).decode('utf-8')
+                global_object_lapa_database_helper.delete_rows(
+                    filters={UserDeviceSession.user_id.name: local_str_user_id,
+                             UserDeviceSession.device_id.name: local_device_id},
+                    database_name=local_string_database_name, schema_name=local_string_schema_name,
+                    table_name=UserDeviceSession.__tablename__)
                 local_list_response_user_device_session = global_object_lapa_database_helper.insert_rows(
                     data=[{UserDeviceSession.user_id.name: local_str_user_id,
                            UserDeviceSession.device_id.name: local_device_id,
