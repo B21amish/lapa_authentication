@@ -252,22 +252,19 @@ async def generate_access_token(user_id: str, refresh_token: Annotated[Union[str
                                 mac_address: Annotated[Union[str, None], Header()]):
     try:
         # ======================================================================================
-        # get entry from user table
+        # validate user_id
         local_list_user_response = global_object_lapa_database_helper.get_rows(
             database_name=local_string_database_name,
             schema_name=local_string_schema_name,
             table_name=User.__tablename__,
             filters={User.user_id.name: user_id})
-        # ======================================================================================
 
-        # ======================================================================================
-        # validate user_id
         if len(local_list_user_response) != 1:
             return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"incorrect user_id: {user_id}.")
         # ======================================================================================
 
         # ======================================================================================
-        # validate user_id
+        # validate mac_address
         local_str_encrypted_mac_address = encrypt(plaintext=mac_address,
                                                   key=config_str_secret_key_for_mac_address_encryption)
 
@@ -326,6 +323,81 @@ async def generate_access_token(user_id: str, refresh_token: Annotated[Union[str
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={"access_token": local_str_access_token}
+        )
+        # ======================================================================================
+
+    except Exception as e:
+        global_object_square_logger.logger.error(e, exc_info=True)
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
+
+
+@router.delete("/logout/")
+@global_object_square_logger.async_auto_logger
+async def logout(user_id: str, access_token: Annotated[Union[str, None], Header()],
+                 mac_address: Annotated[Union[str, None], Header()]):
+    try:
+        # ======================================================================================
+        # validate user_id
+        local_list_user_response = global_object_lapa_database_helper.get_rows(
+            database_name=local_string_database_name,
+            schema_name=local_string_schema_name,
+            table_name=User.__tablename__,
+            filters={User.user_id.name: user_id})
+
+        if len(local_list_user_response) != 1:
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"incorrect user_id: {user_id}.")
+        # ======================================================================================
+
+        # ======================================================================================
+        # validate mac_address
+        local_str_encrypted_mac_address = encrypt(plaintext=mac_address,
+                                                  key=config_str_secret_key_for_mac_address_encryption)
+
+        local_list_response_get_device = global_object_lapa_database_helper.get_rows(
+            database_name=local_string_database_name,
+            schema_name=local_string_schema_name,
+            table_name=Device.__tablename__,
+            filters={Device.device_encrypted_mac_address.name: local_str_encrypted_mac_address})
+
+        if len(local_list_response_get_device) != 1:
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST,
+                                content=f"session does not exist with mac address: {mac_address}.")
+        # ======================================================================================
+
+        # ======================================================================================
+        # validate access token
+        local_device_id = local_list_response_get_device[0][Device.device_id.name]
+        local_list_user_device_session_response = global_object_lapa_database_helper.get_rows(
+            database_name=local_string_database_name,
+            schema_name=local_string_schema_name,
+            table_name=UserDeviceSession.__tablename__,
+            filters={UserDeviceSession.user_id.name: user_id, UserDeviceSession.device_id.name: local_device_id})
+
+        if len(local_list_user_device_session_response) != 1:
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST,
+                                content=f"session does not exist with mac address: {mac_address} "
+                                        f"for user_id: {user_id}.")
+
+        local_dict_access_token_payload = jwt.decode(access_token,
+                                                     config_str_secret_key_for_access_token,
+                                                     algorithms=['HS256'])
+        if local_dict_access_token_payload["user_id"] != user_id:
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"access token and user_id mismatch.")
+        if local_dict_access_token_payload["exp"] < time.time():
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"expired access token.")
+
+        # ======================================================================================
+        # ======================================================================================
+        # delete session for user on mac address
+        global_object_lapa_database_helper.delete_rows(database_name=local_string_database_name,
+                                                       schema_name=local_string_schema_name,
+                                                       table_name=UserDeviceSession.__tablename__,
+                                                       filters={UserDeviceSession.user_id.name: user_id,
+                                                                UserDeviceSession.device_id.name: local_device_id})
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content="Log out successful."
         )
         # ======================================================================================
 
