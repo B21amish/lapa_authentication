@@ -14,6 +14,10 @@ Authentication service
 
 ## Changelog
 
+### v0.0.14
+
+- add new call for /generate_access_token.
+
 ### v0.0.13
 
 - add custom message and status code for duplicate username.
