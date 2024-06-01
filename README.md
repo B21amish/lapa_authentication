@@ -14,6 +14,10 @@ Authentication service
 
 ## Changelog
 
+### v0.0.15
+
+- add new call for /logout.
+
 ### v0.0.14
 
 - add new call for /generate_access_token.
