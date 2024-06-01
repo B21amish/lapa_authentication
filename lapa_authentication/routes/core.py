@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timedelta
 from typing import Annotated, Union
 
@@ -238,6 +239,94 @@ async def login_username(username: str, password: str, mac_address: Annotated[Un
                              "refresh_token": local_str_refresh_token}
                 )
 
+        # ======================================================================================
+
+    except Exception as e:
+        global_object_square_logger.logger.error(e, exc_info=True)
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content=str(e))
+
+
+@router.get("/generate_access_token/")
+@global_object_square_logger.async_auto_logger
+async def generate_access_token(user_id: str, refresh_token: Annotated[Union[str, None], Header()],
+                                mac_address: Annotated[Union[str, None], Header()]):
+    try:
+        # ======================================================================================
+        # get entry from user table
+        local_list_user_response = global_object_lapa_database_helper.get_rows(
+            database_name=local_string_database_name,
+            schema_name=local_string_schema_name,
+            table_name=User.__tablename__,
+            filters={User.user_id.name: user_id})
+        # ======================================================================================
+
+        # ======================================================================================
+        # validate user_id
+        if len(local_list_user_response) != 1:
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"incorrect user_id: {user_id}.")
+        # ======================================================================================
+
+        # ======================================================================================
+        # validate user_id
+        local_str_encrypted_mac_address = encrypt(plaintext=mac_address,
+                                                  key=config_str_secret_key_for_mac_address_encryption)
+
+        local_list_response_get_device = global_object_lapa_database_helper.get_rows(
+            database_name=local_string_database_name,
+            schema_name=local_string_schema_name,
+            table_name=Device.__tablename__,
+            filters={Device.device_encrypted_mac_address.name: local_str_encrypted_mac_address})
+
+        if len(local_list_response_get_device) != 1:
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST,
+                                content=f"session does not exist with mac address: {mac_address}.")
+        # ======================================================================================
+
+        # ======================================================================================
+        # validate refresh token
+        local_device_id = local_list_response_get_device[0][Device.device_id.name]
+        local_list_user_device_session_response = global_object_lapa_database_helper.get_rows(
+            database_name=local_string_database_name,
+            schema_name=local_string_schema_name,
+            table_name=UserDeviceSession.__tablename__,
+            filters={UserDeviceSession.user_id.name: user_id, UserDeviceSession.device_id.name: local_device_id})
+
+        if len(local_list_user_device_session_response) != 1:
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST,
+                                content=f"session does not exist with mac address: {mac_address} "
+                                        f"for user_id: {user_id}.")
+        if not bcrypt.checkpw(
+                refresh_token.encode(
+                    "utf-8"),
+                local_list_user_device_session_response[0][
+                    UserDeviceSession.user_device_session_hashed_refresh_token.name].encode(
+                    "utf-8")):
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST,
+                                content=f"incorrect refresh token: {refresh_token} "
+                                        f"for user_id: {user_id}, "
+                                        f"on mac_address: {mac_address}.")
+        local_dict_refresh_token_payload = jwt.decode(refresh_token,
+                                                      config_str_secret_key_for_refresh_token,
+                                                      algorithms=['HS256'])
+        if local_dict_refresh_token_payload["user_id"] != user_id:
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"refresh token and user_id mismatch.")
+        if local_dict_refresh_token_payload["exp"] < time.time():
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=f"expired refresh token.")
+
+        # ======================================================================================
+        # ======================================================================================
+        # create and send access token
+        local_dict_access_token_payload = {
+            'user_id': user_id,
+            'exp': datetime.now() + timedelta(minutes=config_int_access_token_valid_minutes)
+        }
+        local_str_access_token = jwt.encode(local_dict_access_token_payload,
+                                            config_str_secret_key_for_access_token)
+
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"access_token": local_str_access_token}
+        )
         # ======================================================================================
 
     except Exception as e:
