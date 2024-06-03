@@ -28,7 +28,7 @@ setup(
     description="authentication service for my personal server.",
     long_description=open("README.md", "r").read(),
     long_description_content_type="text/markdown",
-    url=f"https://github.com/lavvsharma/{package_name}",
+    url=f"https://github.com/B21amish/{package_name}",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
