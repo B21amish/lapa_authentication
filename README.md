@@ -14,6 +14,12 @@ Authentication service
 
 ## Changelog
 
+### v0.0.16
+
+- update repo link in setup.py
+- keep version numbers for square_logger and lapa_database_structure as >= instead of ~=.
+- add SQUARE_LOGGER and LAPA_DATABASE_HELPER sections in config and initialise their sdk as per those variables.
+
 ### v0.0.15
 
 - add new call for /logout.
