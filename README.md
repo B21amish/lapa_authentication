@@ -14,6 +14,11 @@ Authentication service
 
 ## Changelog
 
+### v0.0.17
+
+- changed jwt token creation timezone to utc.
+- handled token expiry exception while decoding token.
+
 ### v0.0.16
 
 - update repo link in setup.py

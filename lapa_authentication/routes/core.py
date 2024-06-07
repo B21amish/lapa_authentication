@@ -1,5 +1,4 @@
-import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Union
 
 import bcrypt
@@ -32,6 +31,7 @@ from lapa_authentication.configuration import (
     config_str_lapa_database_protocol,
 )
 from lapa_authentication.utils.encryption import encrypt
+from lapa_authentication.utils.token import get_jwt_payload
 
 router = APIRouter(
     tags=["core"],
@@ -101,7 +101,7 @@ async def register_username(
         # create access token
         local_dict_access_token_payload = {
             "user_id": local_str_user_id,
-            "exp": datetime.now()
+            "exp": datetime.now(timezone.utc)
             + timedelta(minutes=config_int_access_token_valid_minutes),
         }
         local_str_access_token = jwt.encode(
@@ -111,7 +111,7 @@ async def register_username(
         # create refresh token
         local_dict_refresh_token_payload = {
             "user_id": local_str_user_id,
-            "exp": datetime.now()
+            "exp": datetime.now(timezone.utc)
             + timedelta(minutes=config_int_refresh_token_valid_minutes),
         }
         local_str_refresh_token = jwt.encode(
@@ -265,7 +265,7 @@ async def login_username(
                 # create access token
                 local_dict_access_token_payload = {
                     "user_id": local_str_user_id,
-                    "exp": datetime.now()
+                    "exp": datetime.now(timezone.utc)
                     + timedelta(minutes=config_int_access_token_valid_minutes),
                 }
                 local_str_access_token = jwt.encode(
@@ -276,7 +276,7 @@ async def login_username(
                 # create refresh token
                 local_dict_refresh_token_payload = {
                     "user_id": local_str_user_id,
-                    "exp": datetime.now()
+                    "exp": datetime.now(timezone.utc)
                     + timedelta(minutes=config_int_refresh_token_valid_minutes),
                 }
                 local_str_refresh_token = jwt.encode(
@@ -446,18 +446,21 @@ async def generate_access_token(
                 f"for user_id: {user_id}, "
                 f"on mac_address: {mac_address}.",
             )
-        local_dict_refresh_token_payload = jwt.decode(
-            refresh_token, config_str_secret_key_for_refresh_token, algorithms=["HS256"]
-        )
+
+        try:
+            local_dict_refresh_token_payload = get_jwt_payload(
+                refresh_token, config_str_secret_key_for_refresh_token
+            )
+        except Exception as error:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=str(error),
+            )
+
         if local_dict_refresh_token_payload["user_id"] != user_id:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=f"refresh token and user_id mismatch.",
-            )
-        if local_dict_refresh_token_payload["exp"] < time.time():
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content=f"expired refresh token.",
             )
 
         # ======================================================================================
@@ -465,7 +468,7 @@ async def generate_access_token(
         # create and send access token
         local_dict_access_token_payload = {
             "user_id": user_id,
-            "exp": datetime.now()
+            "exp": datetime.now(timezone.utc)
             + timedelta(minutes=config_int_access_token_valid_minutes),
         }
         local_str_access_token = jwt.encode(
@@ -553,18 +556,19 @@ async def logout(
                 f"for user_id: {user_id}.",
             )
 
-        local_dict_access_token_payload = jwt.decode(
-            access_token, config_str_secret_key_for_access_token, algorithms=["HS256"]
-        )
+        try:
+            local_dict_access_token_payload = get_jwt_payload(
+                access_token, config_str_secret_key_for_access_token
+            )
+        except Exception as error:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=str(error),
+            )
         if local_dict_access_token_payload["user_id"] != user_id:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content=f"access token and user_id mismatch.",
-            )
-        if local_dict_access_token_payload["exp"] < time.time():
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content=f"expired access token.",
             )
 
         # ======================================================================================
