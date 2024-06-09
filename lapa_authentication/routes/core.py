@@ -144,7 +144,7 @@ async def register_username(username: str, password: str):
             data=[
                 {
                     UserSession.user_id.name: local_str_user_id,
-                    UserSession.user_session_hashed_refresh_token.name: local_str_refresh_token,
+                    UserSession.user_session_refresh_token.name: local_str_refresh_token,
                     UserSession.user_session_expiry_time.name: local_object_refresh_token_expiry_time.strftime(
                         "%Y-%m-%d %H:%M:%S.%f+00"
                     ),
@@ -254,7 +254,7 @@ async def login_username(username: str, password: str):
                     data=[
                         {
                             UserSession.user_id.name: local_str_user_id,
-                            UserSession.user_session_hashed_refresh_token.name: local_str_refresh_token,
+                            UserSession.user_session_refresh_token.name: local_str_refresh_token,
                             UserSession.user_session_expiry_time.name: local_object_refresh_token_expiry_time.strftime(
                                 "%Y-%m-%d %H:%M:%S.%f+00"
                             ),
