@@ -14,6 +14,11 @@ Authentication service
 
 ## Changelog
 
+### v0.0.18
+
+- remove device entity.
+- keep refresh token without hashing in database.
+
 ### v0.0.17
 
 - changed jwt token creation timezone to utc.
