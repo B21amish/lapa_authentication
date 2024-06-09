@@ -31,9 +31,6 @@ try:
     config_str_secret_key_for_refresh_token = ldict_configuration["ENVIRONMENT"][
         "SECRET_KEY_FOR_REFRESH_TOKEN"
     ]
-    config_str_secret_key_for_mac_address_encryption = ldict_configuration[
-        "ENVIRONMENT"
-    ]["SECRET_KEY_FOR_MAC_ADDRESS_ENCRYPTION"]
     config_int_access_token_valid_minutes = int(
         ldict_configuration["ENVIRONMENT"]["ACCESS_TOKEN_VALID_MINUTES"]
     )

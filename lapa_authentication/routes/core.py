@@ -14,8 +14,7 @@ from lapa_database_structure.lapa.authentication.tables import (
     UserLog,
     UserCredential,
     UserProfile,
-    Device,
-    UserDeviceSession,
+    UserSession,
 )
 from requests.exceptions import HTTPError
 
@@ -25,12 +24,10 @@ from lapa_authentication.configuration import (
     config_int_access_token_valid_minutes,
     config_int_refresh_token_valid_minutes,
     config_str_secret_key_for_refresh_token,
-    config_str_secret_key_for_mac_address_encryption,
     config_str_lapa_database_ip,
     config_int_lapa_database_port,
     config_str_lapa_database_protocol,
 )
-from lapa_authentication.utils.encryption import encrypt
 from lapa_authentication.utils.token import get_jwt_payload
 
 router = APIRouter(
@@ -46,9 +43,7 @@ global_object_lapa_database_helper = LAPADatabaseHelper(
 
 @router.get("/register_username/")
 @global_object_square_logger.async_auto_logger
-async def register_username(
-    username: str, password: str, mac_address: Annotated[Union[str, None], Header()]
-):
+async def register_username(username: str, password: str):
     local_str_user_id = None
     try:
         # ======================================================================================
@@ -109,10 +104,13 @@ async def register_username(
         )
 
         # create refresh token
+        local_object_refresh_token_expiry_time = datetime.now(timezone.utc) + timedelta(
+            minutes=config_int_refresh_token_valid_minutes
+        )
+
         local_dict_refresh_token_payload = {
             "user_id": local_str_user_id,
-            "exp": datetime.now(timezone.utc)
-            + timedelta(minutes=config_int_refresh_token_valid_minutes),
+            "exp": local_object_refresh_token_expiry_time,
         }
         local_str_refresh_token = jwt.encode(
             local_dict_refresh_token_payload, config_str_secret_key_for_refresh_token
@@ -141,56 +139,21 @@ async def register_username(
         # ======================================================================================
 
         # ======================================================================================
-        # entry in device table
-        local_str_encrypted_mac_address = encrypt(
-            plaintext=mac_address, key=config_str_secret_key_for_mac_address_encryption
-        )
-        local_list_response_get_device = global_object_lapa_database_helper.get_rows(
-            filters={
-                Device.device_encrypted_mac_address.name: local_str_encrypted_mac_address
-            },
-            database_name=local_string_database_name,
-            schema_name=local_string_schema_name,
-            table_name=Device.__tablename__,
-        )
-        if len(local_list_response_get_device) == 1:
-            local_device_id = local_list_response_get_device[0][Device.device_id.name]
-        elif len(local_list_response_get_device) == 0:
-            local_list_response_device = global_object_lapa_database_helper.insert_rows(
-                data=[
-                    {
-                        Device.device_encrypted_mac_address.name: local_str_encrypted_mac_address
-                    }
-                ],
-                database_name=local_string_database_name,
-                schema_name=local_string_schema_name,
-                table_name=Device.__tablename__,
-            )
-            local_device_id = local_list_response_device[0][Device.device_id.name]
-        else:
-            global_object_square_logger.logger.error(
-                f"multiple devices with same encrypted mac address: {local_str_encrypted_mac_address}."
-            )
-            raise Exception("Unexpected error.")
-        # ======================================================================================
-        # ======================================================================================
-        # entry in user device session table
-        local_str_hashed_refresh_token = bcrypt.hashpw(
-            local_str_refresh_token.encode("utf-8"), bcrypt.gensalt()
-        ).decode("utf-8")
-        local_list_response_user_device_session = global_object_lapa_database_helper.insert_rows(
+        # entry in user session table
+        local_list_response_user_session = global_object_lapa_database_helper.insert_rows(
             data=[
                 {
-                    UserDeviceSession.user_id.name: local_str_user_id,
-                    UserDeviceSession.device_id.name: local_device_id,
-                    UserDeviceSession.user_device_session_hashed_refresh_token.name: local_str_hashed_refresh_token,
+                    UserSession.user_id.name: local_str_user_id,
+                    UserSession.user_session_hashed_refresh_token.name: local_str_refresh_token,
+                    UserSession.user_session_expiry_time.name: local_object_refresh_token_expiry_time.strftime(
+                        "%Y-%m-%d %H:%M:%S.%f+00"
+                    ),
                 }
             ],
             database_name=local_string_database_name,
             schema_name=local_string_schema_name,
-            table_name=UserDeviceSession.__tablename__,
+            table_name=UserSession.__tablename__,
         )
-
         # ======================================================================================
         return JSONResponse(
             status_code=status.HTTP_200_OK,
@@ -216,9 +179,7 @@ async def register_username(
 
 @router.get("/login_username/")
 @global_object_square_logger.async_auto_logger
-async def login_username(
-    username: str, password: str, mac_address: Annotated[Union[str, None], Header()]
-):
+async def login_username(username: str, password: str):
     try:
         # ======================================================================================
         # get entry from authentication_username table
@@ -231,6 +192,7 @@ async def login_username(
             )
         )
         # ======================================================================================
+
         # ======================================================================================
         # validate username
         # ======================================================================================
@@ -274,80 +236,34 @@ async def login_username(
                 )
 
                 # create refresh token
+                local_object_refresh_token_expiry_time = datetime.now(
+                    timezone.utc
+                ) + timedelta(minutes=config_int_refresh_token_valid_minutes)
+
                 local_dict_refresh_token_payload = {
                     "user_id": local_str_user_id,
-                    "exp": datetime.now(timezone.utc)
-                    + timedelta(minutes=config_int_refresh_token_valid_minutes),
+                    "exp": local_object_refresh_token_expiry_time,
                 }
                 local_str_refresh_token = jwt.encode(
                     local_dict_refresh_token_payload,
                     config_str_secret_key_for_refresh_token,
                 )
                 # ======================================================================================
-                # entry in device table
-                local_str_encrypted_mac_address = encrypt(
-                    plaintext=mac_address,
-                    key=config_str_secret_key_for_mac_address_encryption,
-                )
-                local_list_response_get_device = global_object_lapa_database_helper.get_rows(
-                    filters={
-                        Device.device_encrypted_mac_address.name: local_str_encrypted_mac_address
-                    },
-                    database_name=local_string_database_name,
-                    schema_name=local_string_schema_name,
-                    table_name=Device.__tablename__,
-                )
-                if len(local_list_response_get_device) == 1:
-                    local_device_id = local_list_response_get_device[0][
-                        Device.device_id.name
-                    ]
-                elif len(local_list_response_get_device) == 0:
-                    local_list_response_device = global_object_lapa_database_helper.insert_rows(
-                        data=[
-                            {
-                                Device.device_encrypted_mac_address.name: local_str_encrypted_mac_address
-                            }
-                        ],
-                        database_name=local_string_database_name,
-                        schema_name=local_string_schema_name,
-                        table_name=Device.__tablename__,
-                    )
-                    local_device_id = local_list_response_device[0][
-                        Device.device_id.name
-                    ]
-                else:
-                    global_object_square_logger.logger.error(
-                        "multiple devices with same encrypted mac address."
-                    )
-                    raise Exception("Unexpected error.")
-                # ======================================================================================
-                # ======================================================================================
-                # entry in user device session table
-                local_str_hashed_refresh_token = bcrypt.hashpw(
-                    local_str_refresh_token.encode("utf-8"), bcrypt.gensalt()
-                ).decode("utf-8")
-                global_object_lapa_database_helper.delete_rows(
-                    filters={
-                        UserDeviceSession.user_id.name: local_str_user_id,
-                        UserDeviceSession.device_id.name: local_device_id,
-                    },
-                    database_name=local_string_database_name,
-                    schema_name=local_string_schema_name,
-                    table_name=UserDeviceSession.__tablename__,
-                )
-                local_list_response_user_device_session = global_object_lapa_database_helper.insert_rows(
+                # entry in user session table
+                local_list_response_user_session = global_object_lapa_database_helper.insert_rows(
                     data=[
                         {
-                            UserDeviceSession.user_id.name: local_str_user_id,
-                            UserDeviceSession.device_id.name: local_device_id,
-                            UserDeviceSession.user_device_session_hashed_refresh_token.name: local_str_hashed_refresh_token,
+                            UserSession.user_id.name: local_str_user_id,
+                            UserSession.user_session_hashed_refresh_token.name: local_str_refresh_token,
+                            UserSession.user_session_expiry_time.name: local_object_refresh_token_expiry_time.strftime(
+                                "%Y-%m-%d %H:%M:%S.%f+00"
+                            ),
                         }
                     ],
                     database_name=local_string_database_name,
                     schema_name=local_string_schema_name,
-                    table_name=UserDeviceSession.__tablename__,
+                    table_name=UserSession.__tablename__,
                 )
-
                 # ======================================================================================
                 return JSONResponse(
                     status_code=status.HTTP_200_OK,
@@ -357,7 +273,6 @@ async def login_username(
                         "refresh_token": local_str_refresh_token,
                     },
                 )
-
         # ======================================================================================
 
     except Exception as e:
@@ -370,9 +285,7 @@ async def login_username(
 @router.get("/generate_access_token/")
 @global_object_square_logger.async_auto_logger
 async def generate_access_token(
-    user_id: str,
-    refresh_token: Annotated[Union[str, None], Header()],
-    mac_address: Annotated[Union[str, None], Header()],
+    user_id: str, refresh_token: Annotated[Union[str, None], Header()]
 ):
     try:
         # ======================================================================================
@@ -392,61 +305,26 @@ async def generate_access_token(
         # ======================================================================================
 
         # ======================================================================================
-        # validate mac_address
-        local_str_encrypted_mac_address = encrypt(
-            plaintext=mac_address, key=config_str_secret_key_for_mac_address_encryption
-        )
+        # validate refresh token
 
-        local_list_response_get_device = global_object_lapa_database_helper.get_rows(
+        # validating if a session refresh token exists in the database.
+        local_list_user_session_response = global_object_lapa_database_helper.get_rows(
             database_name=local_string_database_name,
             schema_name=local_string_schema_name,
-            table_name=Device.__tablename__,
+            table_name=UserSession.__tablename__,
             filters={
-                Device.device_encrypted_mac_address.name: local_str_encrypted_mac_address
+                UserSession.user_id.name: user_id,
+                UserSession.user_session_refresh_token.name: refresh_token,
             },
         )
 
-        if len(local_list_response_get_device) != 1:
+        if len(local_list_user_session_response) != 1:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content=f"session does not exist with mac address: {mac_address}.",
-            )
-        # ======================================================================================
-
-        # ======================================================================================
-        # validate refresh token
-        local_device_id = local_list_response_get_device[0][Device.device_id.name]
-        local_list_user_device_session_response = (
-            global_object_lapa_database_helper.get_rows(
-                database_name=local_string_database_name,
-                schema_name=local_string_schema_name,
-                table_name=UserDeviceSession.__tablename__,
-                filters={
-                    UserDeviceSession.user_id.name: user_id,
-                    UserDeviceSession.device_id.name: local_device_id,
-                },
-            )
-        )
-
-        if len(local_list_user_device_session_response) != 1:
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content=f"session does not exist with mac address: {mac_address} "
+                content=f"incorrect refresh token: {refresh_token} for user_id: {user_id}."
                 f"for user_id: {user_id}.",
             )
-        if not bcrypt.checkpw(
-            refresh_token.encode("utf-8"),
-            local_list_user_device_session_response[0][
-                UserDeviceSession.user_device_session_hashed_refresh_token.name
-            ].encode("utf-8"),
-        ):
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content=f"incorrect refresh token: {refresh_token} "
-                f"for user_id: {user_id}, "
-                f"on mac_address: {mac_address}.",
-            )
-
+        # validating if the refresh token is valid, active and of the same user.
         try:
             local_dict_refresh_token_payload = get_jwt_payload(
                 refresh_token, config_str_secret_key_for_refresh_token
@@ -493,7 +371,7 @@ async def generate_access_token(
 async def logout(
     user_id: str,
     access_token: Annotated[Union[str, None], Header()],
-    mac_address: Annotated[Union[str, None], Header()],
+    refresh_token: Annotated[Union[str, None], Header()],
 ):
     try:
         # ======================================================================================
@@ -513,49 +391,31 @@ async def logout(
         # ======================================================================================
 
         # ======================================================================================
-        # validate mac_address
-        local_str_encrypted_mac_address = encrypt(
-            plaintext=mac_address, key=config_str_secret_key_for_mac_address_encryption
-        )
+        # validate refresh token
 
-        local_list_response_get_device = global_object_lapa_database_helper.get_rows(
+        # validating if a session refresh token exists in the database.
+        local_list_user_session_response = global_object_lapa_database_helper.get_rows(
             database_name=local_string_database_name,
             schema_name=local_string_schema_name,
-            table_name=Device.__tablename__,
+            table_name=UserSession.__tablename__,
             filters={
-                Device.device_encrypted_mac_address.name: local_str_encrypted_mac_address
+                UserSession.user_id.name: user_id,
+                UserSession.user_session_refresh_token.name: refresh_token,
             },
         )
 
-        if len(local_list_response_get_device) != 1:
+        if len(local_list_user_session_response) != 1:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content=f"session does not exist with mac address: {mac_address}.",
+                content=f"incorrect refresh token: {refresh_token} for user_id: {user_id}."
+                f"for user_id: {user_id}.",
             )
+        # not validating if the refresh token is valid, active and of the same user.
         # ======================================================================================
 
         # ======================================================================================
         # validate access token
-        local_device_id = local_list_response_get_device[0][Device.device_id.name]
-        local_list_user_device_session_response = (
-            global_object_lapa_database_helper.get_rows(
-                database_name=local_string_database_name,
-                schema_name=local_string_schema_name,
-                table_name=UserDeviceSession.__tablename__,
-                filters={
-                    UserDeviceSession.user_id.name: user_id,
-                    UserDeviceSession.device_id.name: local_device_id,
-                },
-            )
-        )
-
-        if len(local_list_user_device_session_response) != 1:
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content=f"session does not exist with mac address: {mac_address} "
-                f"for user_id: {user_id}.",
-            )
-
+        # validating if the access token is valid, active and of the same user.
         try:
             local_dict_access_token_payload = get_jwt_payload(
                 access_token, config_str_secret_key_for_access_token
@@ -572,15 +432,19 @@ async def logout(
             )
 
         # ======================================================================================
+
+        # NOTE: if both access token and refresh token have expired for a user,
+        # it can be assumed that user session only needs to be removed from the front end.
+
         # ======================================================================================
-        # delete session for user on mac address
+        # delete session for user
         global_object_lapa_database_helper.delete_rows(
             database_name=local_string_database_name,
             schema_name=local_string_schema_name,
-            table_name=UserDeviceSession.__tablename__,
+            table_name=UserSession.__tablename__,
             filters={
-                UserDeviceSession.user_id.name: user_id,
-                UserDeviceSession.device_id.name: local_device_id,
+                UserSession.user_id.name: user_id,
+                UserSession.user_session_refresh_token.name: refresh_token,
             },
         )
 
