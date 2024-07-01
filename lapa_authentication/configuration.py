@@ -37,6 +37,12 @@ try:
     config_int_refresh_token_valid_minutes = int(
         ldict_configuration["ENVIRONMENT"]["REFRESH_TOKEN_VALID_MINUTES"]
     )
+    config_str_ssl_crt_file_path = ldict_configuration["ENVIRONMENT"][
+        "SSL_CRT_FILE_PATH"
+    ]
+    config_str_ssl_key_file_path = ldict_configuration["ENVIRONMENT"][
+        "SSL_KEY_FILE_PATH"
+    ]
     # ===========================================
 
     # ===========================================
