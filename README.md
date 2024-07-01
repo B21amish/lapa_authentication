@@ -14,6 +14,10 @@ Authentication service
 
 ## Changelog
 
+### v0.0.20
+
+- https support
+
 ### v0.0.19
 
 - bugfix in login and register call (update column name).
